@@ -1,0 +1,12 @@
+# ssh-2fa-hardening baseline template
+# Use with caution: review environment-specific controls before direct replacement.
+
+ChallengeResponseAuthentication yes
+UsePAM yes
+PasswordAuthentication yes
+
+# Preferred method where public key is already deployed.
+AuthenticationMethods publickey,keyboard-interactive
+
+# Compatibility fallback if preferred method rejected by local OpenSSH build.
+# AuthenticationMethods password,keyboard-interactive

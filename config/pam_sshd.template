@@ -1,0 +1,10 @@
+# ssh-2fa-hardening PAM baseline for /etc/pam.d/sshd
+
+auth required pam_google_authenticator.so
+
+# Keep existing distro defaults below this line.
+# Example for Debian/Ubuntu:
+# @include common-auth
+# @include common-account
+# @include common-session
+# @include common-password
