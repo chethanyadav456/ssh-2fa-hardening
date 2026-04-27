@@ -188,8 +188,10 @@ install_dependencies() {
   case "$PKG_MANAGER" in
     apt)
       export DEBIAN_FRONTEND=noninteractive
-      apt update -y
-      apt install -y libpam-google-authenticator qrencode curl wget
+      if ! apt-get update -y; then
+        log_warn "apt update failed (likely due to external repository issues). Continuing with existing package indexes."
+      fi
+      apt-get install -y --no-install-recommends libpam-google-authenticator qrencode curl wget
       ;;
     yum)
       yum install -y google-authenticator qrencode curl wget
@@ -272,7 +274,7 @@ run_google_authenticator_setup() {
 
   log_info "Launching interactive Google Authenticator setup for user ${TARGET_USER}."
   log_warn "Follow prompts carefully and store emergency scratch codes securely."
-  sudo -u "$TARGET_USER" -H google-authenticator < /dev/tty
+  sudo -u "$TARGET_USER" -H google-authenticator < /dev/tty > /dev/tty 2>&1
 
   while true; do
     printf "\nHave you scanned the QR code?\n\n"
