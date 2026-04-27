@@ -257,9 +257,13 @@ show_qr_again() {
 }
 
 run_google_authenticator_setup() {
+  if [[ ! -r /dev/tty ]]; then
+    die "Interactive setup requires a TTY. Run from a terminal session with an attached /dev/tty."
+  fi
+
   if is_google_auth_already_configured; then
     log_warn "Google Authenticator already configured for ${TARGET_USER}."
-    read -r -p "Do you want to reconfigure it? (yes/no): " confirm
+    read -r -p "Do you want to reconfigure it? (yes/no): " confirm < /dev/tty
     if [[ "$confirm" != "yes" ]]; then
       log_info "Keeping existing authenticator configuration."
       return
@@ -268,14 +272,14 @@ run_google_authenticator_setup() {
 
   log_info "Launching interactive Google Authenticator setup for user ${TARGET_USER}."
   log_warn "Follow prompts carefully and store emergency scratch codes securely."
-  sudo -u "$TARGET_USER" -H google-authenticator
+  sudo -u "$TARGET_USER" -H google-authenticator < /dev/tty
 
   while true; do
     printf "\nHave you scanned the QR code?\n\n"
     printf "1. Yes, continue\n"
     printf "2. Show QR again\n"
     printf "3. Exit safely\n\n"
-    read -r -p "Select option [1-3]: " option
+    read -r -p "Select option [1-3]: " option < /dev/tty
     case "$option" in
       1)
         log_success "QR scan confirmed by operator."
