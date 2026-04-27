@@ -29,6 +29,18 @@ fail() {
   FAILURES=$((FAILURES + 1))
 }
 
+print_banner() {
+  printf "%b" "$COLOR_BLUE"
+  cat <<'EOF'
+  ____  ____  _   _    ____  _____ _        _   _    _    ____  ____  _____ _   _ ___ _   _  ____
+ / ___|/ ___|| | | |  |___ \|  ___/ \      | | | |  / \  |  _ \|  _ \| ____| \ | |_ _| \ | |/ ___|
+ \___ \\___ \| |_| |    __) | |_ / _ \     | |_| | / _ \ | |_) | | | |  _| |  \| || ||  \| | |  _
+  ___) |___) |  _  |   / __/|  _/ ___ \    |  _  |/ ___ \|  _ <| |_| | |___| |\  || || |\  | |_| |
+ |____/|____/|_| |_|  |_____|_|/_/   \_\   |_| |_/_/   \_\_| \_\____/|_____|_| \_|___|_| \_|\____|
+EOF
+  printf "%b" "$COLOR_RESET"
+}
+
 resolve_target_home() {
   TARGET_HOME="$(getent passwd "$TARGET_USER" | awk -F: '{print $6}')"
   [[ -n "$TARGET_HOME" ]] || TARGET_HOME="/root"
@@ -144,6 +156,8 @@ check_ssh_service_status() {
 }
 
 main() {
+  print_banner
+
   resolve_target_home
   info "Running SSH 2FA hardening verification checks for user ${TARGET_USER}."
 
