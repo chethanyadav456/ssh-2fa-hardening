@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="logo.png" alt="SSH 2FA Hardening Framework logo" width="350" />
+    <img src="logo_2fa_ssh.png" alt="SSH 2FA Hardening Framework logo" width="350" />
 </p>
 
 <p align="center">
