@@ -132,7 +132,7 @@ check_internet_connectivity() {
 }
 
 detect_service_manager() {
-  if command -v systemctl >/dev/null 2>&1; then
+  if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files >/dev/null 2>&1; then
     SERVICE_MANAGER="systemctl"
   elif command -v service >/dev/null 2>&1; then
     SERVICE_MANAGER="service"
@@ -143,18 +143,36 @@ detect_service_manager() {
 }
 
 detect_ssh_service_name() {
+  local candidate
+
   if [[ "$SERVICE_MANAGER" == "systemctl" ]]; then
-    if systemctl list-unit-files | awk '{print $1}' | grep -qx 'sshd.service'; then
-      SSH_SERVICE_NAME="sshd"
-    elif systemctl list-unit-files | awk '{print $1}' | grep -qx 'ssh.service'; then
-      SSH_SERVICE_NAME="ssh"
-    fi
-  else
-    if service sshd status >/dev/null 2>&1; then
-      SSH_SERVICE_NAME="sshd"
-    elif service ssh status >/dev/null 2>&1; then
-      SSH_SERVICE_NAME="ssh"
-    fi
+    # Prefer ssh on Debian/Ubuntu, then sshd for RHEL-like systems.
+    for candidate in ssh sshd; do
+      if systemctl list-unit-files --type=service --no-legend 2>/dev/null | awk '{print $1}' | grep -qx "${candidate}.service"; then
+        SSH_SERVICE_NAME="$candidate"
+        break
+      fi
+
+      if [[ -f "/etc/systemd/system/${candidate}.service" || -f "/lib/systemd/system/${candidate}.service" || -f "/usr/lib/systemd/system/${candidate}.service" ]]; then
+        SSH_SERVICE_NAME="$candidate"
+        break
+      fi
+    done
+  fi
+
+  if [[ -z "$SSH_SERVICE_NAME" ]] && command -v service >/dev/null 2>&1; then
+    for candidate in ssh sshd; do
+      if service "$candidate" status >/dev/null 2>&1 || [[ -x "/etc/init.d/${candidate}" ]]; then
+        SSH_SERVICE_NAME="$candidate"
+        break
+      fi
+    done
+  fi
+
+  if [[ -z "$SSH_SERVICE_NAME" ]] && command -v sshd >/dev/null 2>&1; then
+    SSH_SERVICE_NAME="sshd"
+    SERVICE_MANAGER="process"
+    log_warn "No managed ssh service unit found. Falling back to direct sshd process management."
   fi
 
   [[ -n "$SSH_SERVICE_NAME" ]] || die "Unable to detect SSH service name (ssh/sshd)."
@@ -361,14 +379,35 @@ manage_ssh_service() {
         ;;
     esac
   else
-    case "$action" in
-      enable|disable)
-        log_warn "Service manager '${SERVICE_MANAGER}' does not support ${action} consistently; skipping."
-        ;;
-      *)
-        service "$SSH_SERVICE_NAME" "$action"
-        ;;
-    esac
+    if [[ "$SERVICE_MANAGER" == "service" ]]; then
+      case "$action" in
+        enable|disable)
+          log_warn "Service manager '${SERVICE_MANAGER}' does not support ${action} consistently; skipping."
+          ;;
+        *)
+          service "$SSH_SERVICE_NAME" "$action"
+          ;;
+      esac
+    else
+      case "$action" in
+        reload|restart)
+          pgrep -x sshd >/dev/null 2>&1 || die "sshd process not running; cannot ${action}."
+          pkill -HUP -x sshd
+          ;;
+        status)
+          pgrep -ax sshd || die "sshd process not running."
+          ;;
+        enable|disable)
+          log_warn "Direct process mode does not support ${action}; skipping."
+          ;;
+        start|stop)
+          die "Direct process mode does not support ${action} safely."
+          ;;
+        *)
+          die "Unsupported service action '${action}' for direct process mode."
+          ;;
+      esac
+    fi
   fi
 }
 
